@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - web_map</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.10.2/dist/full.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="login-bg">
+    <div id="auth" class="flex flex-col items-center justify-center min-h-screen">
+      <h1 class="text-4xl md:text-5xl font-extrabold text-center mb-8 tracking-wide text-primary drop-shadow-lg" style="letter-spacing:0.05em;">Olimpiadi nel mondo</h1>
+      <div class="card w-96 bg-base-100 shadow-2xl border border-primary/30">
+        <div class="card-body">
+          <h2 class="card-title justify-center">Accedi</h2>
+          <form id="loginForm" class="space-y-4">
+            <input type="email" id="email" placeholder="Email" class="input input-bordered w-full" required>
+            <input type="password" id="password" placeholder="Password" class="input input-bordered w-full" required>
+            <div class="flex justify-between">
+              <button type="submit" class="btn btn-primary">Accedi</button>
+              <a href="/register.html" class="btn btn-link">Registrati</a>
+            </div>
+          </form>
+          <div id="authError" class="text-error mt-2"></div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/login.js"></script>
+  </body>
+</html>

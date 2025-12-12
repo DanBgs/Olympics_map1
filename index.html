@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>web_map</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.10.2/dist/full.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""/>
+     <!-- Make sure you put this AFTER Leaflet's CSS -->
+     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+  </head>
+  <body class="login-bg">
+    <div id="auth" class="flex flex-col items-center justify-center min-h-screen">
+      <h1 class="text-4xl md:text-5xl font-extrabold text-center mb-8 tracking-wide text-primary drop-shadow-lg" style="letter-spacing:0.05em;">Olimpiadi nel mondo</h1>
+      <div class="card w-96 bg-base-100 shadow-2xl border border-primary/30">
+        <div class="card-body">
+          <h2 class="card-title justify-center" id="authTitle">Accedi</h2>
+          <form id="loginForm" class="space-y-4">
+            <input type="email" id="email" placeholder="Email" class="input input-bordered w-full" required>
+            <input type="password" id="password" placeholder="Password" class="input input-bordered w-full" required>
+            <div class="flex justify-between">
+              <button type="submit" class="btn btn-primary">Accedi</button>
+              <button type="button" id="showRegisterBtn" class="btn btn-link">Registrati</button>
+            </div>
+          </form>
+          <form id="registerForm" class="space-y-4 hidden">
+            <input type="text" id="registerUsername" placeholder="Nome utente" class="input input-bordered w-full" required>
+            <input type="email" id="registerEmail" placeholder="Email" class="input input-bordered w-full" required>
+            <input type="password" id="registerPassword" placeholder="Password" class="input input-bordered w-full" required>
+            <input type="password" id="registerPasswordConfirm" placeholder="Ripeti password" class="input input-bordered w-full" required>
+            <input type="file" id="registerAvatar" accept="image/*" class="file-input file-input-bordered w-full" />
+            <div class="flex justify-between">
+              <button type="button" id="showLoginBtn" class="btn btn-link">Accedi</button>
+              <button type="submit" class="btn btn-secondary">Registrati</button>
+            </div>
+          </form>
+          <div id="authError" class="text-error mt-2"></div>
+        </div>
+      </div>
+    </div>
+    <div id="app" style="display:none;">
+       <div id="map"></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

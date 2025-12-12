@@ -1,0 +1,86 @@
+@import url('https://cdn.jsdelivr.net/npm/daisyui@4.10.2/dist/full.css');
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+#map {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* DaisyUI e Tailwind gestiscono la maggior parte dello stile del form */
+
+body.login-bg {
+  background: linear-gradient(135deg, #c2e9fb 0%, #f9d423 50%, #ff6e7f 100%);
+  min-height: 100vh;
+}
+
+#auth {
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+/* Titolo principale */
+h1 {
+  text-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #1d3557;
+  margin-bottom: 2rem;
+}
+
+#auth h1 {
+  font-family: 'Olympic', 'Montserrat', 'Inter', sans-serif;
+  font-size: 4rem;
+  font-weight: 900;
+  color: #1d3557;
+  margin-bottom: 2.5rem;
+  text-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+
+#auth .card {
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+  border: 1.5px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.95);
+}
+
+#auth input, #auth .file-input {
+  background: #f8fafc;
+}
+
+#auth h2.card-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1d3557;
+  margin-bottom: 0.5em;
+}
+
+#auth .btn-primary, #auth .btn-secondary {
+  font-weight: 600;
+}
+
+#auth .btn-link {
+  color: #457b9d;
+}
+
+#authError {
+  min-height: 1.5em;
+}
+
+@font-face {
+  font-family: 'Olympic';
+  src: url('/public/fonts/Olympic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}

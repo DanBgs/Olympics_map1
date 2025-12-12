@@ -1,0 +1,382 @@
+import { MaptilerLayer, MapStyle, Language } from '@maptiler/leaflet-maptilersdk';
+import './style.css'
+import 'leaflet/dist/leaflet.css';
+import PocketBase from 'pocketbase';
+
+const pb = new PocketBase('http://127.0.0.1:8090');
+
+// --- AUTENTICAZIONE ---
+const authDiv = document.getElementById('auth');
+const appDiv = document.getElementById('app');
+const loginForm = document.getElementById('loginForm');
+const registerBtn = document.getElementById('registerBtn');
+const authError = document.getElementById('authError');
+
+// --- GESTIONE LOGIN/REGISTRAZIONE FORM ---
+const showRegisterBtn = document.getElementById('showRegisterBtn');
+const showLoginBtn = document.getElementById('showLoginBtn');
+const registerForm = document.getElementById('registerForm');
+const authTitle = document.getElementById('authTitle');
+
+showRegisterBtn.onclick = () => {
+    loginForm.classList.add('hidden');
+    registerForm.classList.remove('hidden');
+    authTitle.textContent = 'Registrati';
+    authError.textContent = '';
+};
+showLoginBtn.onclick = () => {
+    registerForm.classList.add('hidden');
+    loginForm.classList.remove('hidden');
+    authTitle.textContent = 'Accedi';
+    authError.textContent = '';
+};
+
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    try {
+        await pb.collection('users').authWithPassword(email, password);
+        authDiv.style.display = 'none';
+        appDiv.style.display = 'block';
+        showMap();
+        renderUserMenu();
+    } catch (err) {
+        authError.textContent = 'Credenziali non valide.';
+    }
+});
+
+registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('registerUsername').value;
+    const email = document.getElementById('registerEmail').value;
+    const password = document.getElementById('registerPassword').value;
+    const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+    const avatarInput = document.getElementById('registerAvatar');
+    if (password !== passwordConfirm) {
+        authError.textContent = 'Le password non coincidono.';
+        return;
+    }
+    const formData = new FormData();
+    formData.append('username', username);
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('passwordConfirm', passwordConfirm);
+    if (avatarInput && avatarInput.files[0]) {
+        formData.append('avatar', avatarInput.files[0]);
+    }
+    try {
+        await pb.collection('users').create(formData);
+        authError.textContent = 'Registrazione avvenuta! Ora puoi accedere.';
+        showLoginBtn.onclick();
+    } catch (err) {
+        authError.textContent = 'Errore nella registrazione.';
+    }
+});
+
+// --- FILTRI UI ---
+function renderFilters(onFilterChange) {
+    let filterBar = document.getElementById('filterBar');
+    if (filterBar) filterBar.remove();
+    filterBar = document.createElement('div');
+    filterBar.id = 'filterBar';
+    filterBar.style.position = 'fixed';
+    filterBar.style.top = '1rem';
+    filterBar.style.left = '50%';
+    filterBar.style.transform = 'translateX(-50%)';
+    filterBar.style.zIndex = '10001';
+    filterBar.style.display = 'flex';
+    filterBar.style.gap = '1em';
+    filterBar.innerHTML = `
+      <div>
+        <button id="filterAll" class="btn btn-sm">Tutte</button>
+        <button id="filterFavorites" class="btn btn-sm">Solo preferiti</button>
+      </div>
+      <div>
+        <button id="filterEstive" class="btn btn-sm">Estive</button>
+        <button id="filterInvernali" class="btn btn-sm">Invernali</button>
+      </div>
+    `;
+    document.body.appendChild(filterBar);
+    const btns = {
+        all: document.getElementById('filterAll'),
+        favorites: document.getElementById('filterFavorites'),
+        estive: document.getElementById('filterEstive'),
+        invernali: document.getElementById('filterInvernali')
+    };
+    let filterMode = 'all'; // 'all' o 'favorites'
+    let typeMode = null; // null, 'estive', 'invernali'
+    function setActive() {
+        btns.all.classList.toggle('btn-primary', filterMode === 'all');
+        btns.all.classList.toggle('btn-outline', filterMode !== 'all');
+        btns.favorites.classList.toggle('btn-primary', filterMode === 'favorites');
+        btns.favorites.classList.toggle('btn-outline', filterMode !== 'favorites');
+        btns.estive.classList.toggle('btn-primary', typeMode === 'estive');
+        btns.estive.classList.toggle('btn-outline', typeMode !== 'estive');
+        btns.invernali.classList.toggle('btn-primary', typeMode === 'invernali');
+        btns.invernali.classList.toggle('btn-outline', typeMode !== 'invernali');
+    }
+    setActive();
+    btns.all.onclick = () => { filterMode = 'all'; setActive(); onFilterChange(filterMode, typeMode); };
+    btns.favorites.onclick = () => { filterMode = 'favorites'; setActive(); onFilterChange(filterMode, typeMode); };
+    btns.estive.onclick = () => {
+        typeMode = typeMode === 'estive' ? null : 'estive';
+        setActive();
+        onFilterChange(filterMode, typeMode);
+    };
+    btns.invernali.onclick = () => {
+        typeMode = typeMode === 'invernali' ? null : 'invernali';
+        setActive();
+        onFilterChange(filterMode, typeMode);
+    };
+}
+
+function showMap() {
+    const key = 'oirkpJSBQvmrD8LVKFNH';
+    const map = L.map('map').setView([45.429605309337376, 10.185704996315941], 3);
+    const mtLayer = new MaptilerLayer({
+        apiKey: key,
+        style: MapStyle.TOPO,
+        language: Language.ITALIAN,
+    }).addTo(map);
+
+    // --- MARCATORI OLIMPIADI DA POCKETBASE ---
+    let filterMode = 'all';
+    let typeMode = null;
+    let allRecordsCache = [];
+    let userFavorites = [];
+    let userFavoritesIds = [];
+    let markers = [];
+
+    async function loadDataAndRenderMarkers() {
+        let page = 1;
+        const perPage = 100;
+        let allRecords = [];
+        let hasMore = true;
+        if (pb.authStore.model) {
+            const favRes = await pb.collection('preferiti').getFullList({
+                filter: `user = "${pb.authStore.model.id}"`,
+                expand: 'olimpiade',
+                perPage: 200
+            });
+            userFavorites = favRes;
+            userFavoritesIds = favRes.map(f => f.olimpiade);
+        }
+        while (hasMore) {
+            const response = await fetch(`http://127.0.0.1:8090/api/collections/olimpiadi/records?page=${page}&perPage=${perPage}`);
+            const data = await response.json();
+            allRecords = allRecords.concat(data.items);
+            hasMore = page * perPage < data.totalItems;
+            page++;
+        }
+        allRecordsCache = allRecords;
+        renderMarkers();
+    }
+
+    function renderMarkers() {
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+        let filteredRecords = allRecordsCache;
+        if (filterMode === 'favorites') {
+            filteredRecords = filteredRecords.filter(r => userFavoritesIds.includes(r.id));
+        }
+        if (typeMode === 'estive') {
+            filteredRecords = filteredRecords.filter(r => r.tipo && r.tipo.toLowerCase() === 'estive');
+        } else if (typeMode === 'invernali') {
+            filteredRecords = filteredRecords.filter(r => r.tipo && r.tipo.toLowerCase() === 'invernali');
+        }
+        for (const record of filteredRecords) {
+            const anno = record.anno;
+            const citta = record.citta;
+            const paese = record.paese;
+            const lat = parseFloat(record.latitudine);
+            const lng = parseFloat(record.longitudine);
+            const tipo = record.tipo;
+            const isFavorite = userFavoritesIds.includes(record.id);
+            // Icona base
+            let iconHtml = `<img src='olympic-icon-1-removebg-preview.png' style='width:25px;height:25px;'>`;
+            // Se preferito, aggiungi cuoricino piccolo
+            if (isFavorite) {
+                iconHtml += `<span style='position:absolute;bottom:0;right:0;font-size:1em;color:red;pointer-events:none;'>❤️</span>`;
+            }
+            const customIcon = L.divIcon({
+                html: `<div style='position:relative;display:inline-block;'>${iconHtml}</div>`,
+                iconSize: [25, 25],
+                className: ''
+            });
+            const marker = L.marker([lat, lng], {
+                icon: customIcon
+            }).addTo(map);
+            markers.push(marker);
+            marker.bindPopup(`<b>${citta} (${paese})</b><br>Olimpiadi ${tipo} ${anno}<br><span class="favorite-heart" data-olimpiade="${record.id}" style="cursor:pointer;font-size:1.5em;">🤍</span>`);
+            marker.on('popupopen', function() {
+                const heartEl = document.querySelector('.favorite-heart[data-olimpiade="' + record.id + '"]');
+                // Controllo preferito ogni volta che si apre il popup
+                const isFavoriteNow = userFavoritesIds.includes(record.id);
+                heartEl.textContent = isFavoriteNow ? '❤️' : '🤍';
+                heartEl.style.color = isFavoriteNow ? 'red' : '#aaa';
+                heartEl.onclick = async function() {
+                    try {
+                        if (heartEl.style.color === 'red') {
+                            // Rimuovi dai preferiti e dal database
+                            const fav = userFavorites.find(f => f.olimpiade === record.id);
+                            if (fav) {
+                                await pb.collection('preferiti').delete(fav.id);
+                                heartEl.textContent = '🤍';
+                                heartEl.style.color = '#aaa';
+                                userFavorites = userFavorites.filter(f => f.id !== fav.id);
+                                userFavoritesIds = userFavoritesIds.filter(id => id !== record.id);
+                                // Aggiorna marker: rimuovi cuoricino piccolo
+                                marker.setIcon(L.divIcon({
+                                    html: `<div style='position:relative;display:inline-block;'><img src='olympic-icon-1-removebg-preview.png' style='width:25px;height:25px;'></div>`,
+                                    iconSize: [25, 25],
+                                    className: ''
+                                }));
+                                if (filterMode === 'favorites') renderMarkers();
+                            }
+                        } else {
+                            // Aggiungi ai preferiti e mantieni cuore rosso
+                            const newFav = await pb.collection('preferiti').create({ user: pb.authStore.model.id, olimpiade: record.id });
+                            heartEl.textContent = '❤️';
+                            heartEl.style.color = 'red';
+                            userFavorites.push(newFav);
+                            userFavoritesIds.push(record.id);
+                            // Aggiorna marker: aggiungi cuoricino piccolo
+                            marker.setIcon(L.divIcon({
+                                html: `<div style='position:relative;display:inline-block;'><img src='olympic-icon-1-removebg-preview.png' style='width:25px;height:25px;'><span style='position:absolute;bottom:0;right:0;font-size:1em;color:red;pointer-events:none;'>❤️</span></div>`,
+                                iconSize: [25, 25],
+                                className: ''
+                            }));
+                        }
+                    } catch (err) {
+                        alert('Errore nel salvataggio del preferito');
+                    }
+                };
+            });
+        }
+    }
+
+    renderFilters(function(fMode, tMode) {
+        filterMode = fMode;
+        typeMode = tMode;
+        renderMarkers();
+    });
+    loadDataAndRenderMarkers();
+}
+
+// --- GESTIONE UTENTE (logout e modifica account) ---
+function renderUserMenu() {
+    let userMenu = document.getElementById('userMenuDropdown');
+    if (userMenu) userMenu.remove();
+    userMenu = document.createElement('div');
+    userMenu.id = 'userMenuDropdown';
+    userMenu.className = 'dropdown dropdown-end';
+    userMenu.style.position = 'fixed';
+    userMenu.style.top = '1rem';
+    userMenu.style.right = '1rem';
+    userMenu.style.zIndex = '10000';
+    // Prendi l'avatar dal campo PocketBase (es: avatar) oppure usa un'icona di default
+    let avatarUrl = '';
+    if (pb.authStore.model && pb.authStore.model.avatar) {
+        avatarUrl = `http://127.0.0.1:8090/api/files/users/${pb.authStore.model.id}/${pb.authStore.model.avatar}?thumb=100x100`;
+    } else {
+        avatarUrl = 'https://api.dicebear.com/7.x/identicon/svg?seed=' + (pb.authStore.model?.id || 'user');
+    }
+    userMenu.innerHTML = `
+      <label tabindex="0" class="btn btn-ghost btn-circle avatar">
+        <div class="w-10 rounded-full bg-neutral-focus text-neutral-content flex items-center justify-center relative">
+          <img id="userAvatar" src="${avatarUrl}" alt="user" onerror="this.style.display='none'" />
+          <svg id="defaultUserIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-8 h-8 absolute top-1 left-1" style="display:none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        </div>
+      </label>
+      <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
+        <li><a id="editAccountBtn">Modifica account</a></li>
+        <li><a id="logoutBtn">Logout</a></li>
+      </ul>
+    `;
+    document.body.appendChild(userMenu);
+
+    // fallback icona default se l'immagine non si carica
+    const avatar = userMenu.querySelector('#userAvatar');
+    const defaultIcon = userMenu.querySelector('#defaultUserIcon');
+    avatar.onerror = () => { avatar.style.display = 'none'; defaultIcon.style.display = 'block'; };
+
+    document.getElementById('logoutBtn').onclick = () => {
+        pb.authStore.clear();
+        location.reload();
+    };
+    document.getElementById('editAccountBtn').onclick = () => {
+        showEditAccountModal();
+    };
+}
+
+function showEditAccountModal() {
+    let modal = document.getElementById('editAccountModal');
+    if (!modal) {
+        modal = document.createElement('dialog');
+        modal.id = 'editAccountModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+          <form method="dialog" class="modal-box space-y-4" enctype="multipart/form-data">
+            <h3 class="font-bold text-lg">Modifica Account</h3>
+            <input type="text" id="editUsername" class="input input-bordered w-full" placeholder="Nome utente" value="${pb.authStore.model?.username || ''}" required />
+            <input type="email" id="editEmail" class="input input-bordered w-full" placeholder="Email" value="${pb.authStore.model?.email || ''}" required />
+            <input type="password" id="editPassword" class="input input-bordered w-full" placeholder="Nuova password (opzionale)" />
+            <input type="file" id="editAvatar" accept="image/*" class="file-input file-input-bordered w-full" />
+            <div class="modal-action">
+              <button type="submit" class="btn btn-primary">Salva</button>
+              <button type="button" class="btn" id="closeEditModal">Annulla</button>
+            </div>
+          </form>
+        `;
+        document.body.appendChild(modal);
+    }
+    modal.showModal();
+    document.getElementById('closeEditModal').onclick = () => modal.close();
+    modal.querySelector('form').onsubmit = async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('editUsername').value;
+        const email = document.getElementById('editEmail').value;
+        const password = document.getElementById('editPassword').value;
+        const avatarInput = document.getElementById('editAvatar');
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('email', email);
+        if (password) {
+            formData.append('password', password);
+            formData.append('passwordConfirm', password);
+        }
+        if (avatarInput && avatarInput.files[0]) {
+            formData.append('avatar', avatarInput.files[0]);
+        }
+        try {
+            await pb.collection('users').update(pb.authStore.model.id, formData);
+            modal.close();
+            alert('Dati aggiornati!');
+            location.reload();
+        } catch (err) {
+            alert('Errore nella modifica account');
+        }
+    };
+}
+
+// Se l'utente non è autenticato, reindirizza a login.html
+if (!pb.authStore.isValid) {
+    window.location.href = '/login.html';
+}
+
+// Se l'utente è già autenticato, mostra direttamente la mappa
+if (pb.authStore.isValid) {
+    authDiv.style.display = 'none';
+    appDiv.style.display = 'block';
+    showMap();
+    renderUserMenu();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.getElementById('auth') && document.getElementById('auth').style.display !== 'none') {
+    document.body.classList.add('login-bg');
+  }
+});
+
+

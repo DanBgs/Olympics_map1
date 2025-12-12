@@ -1,0 +1,33 @@
+// DaisyUI richiede Tailwind CSS. Ecco come aggiungere DaisyUI:
+// 1. Installa Tailwind CSS e DaisyUI:
+//    npm install tailwindcss daisyui
+// 2. Crea il file tailwind.config.js e aggiungi daisyui come plugin.
+// 3. Importa Tailwind CSS nel file style.css.
+// 4. Usa le classi DaisyUI nel form di login.
+
+// Ecco la versione aggiornata del form di login per index.html:
+
+/*
+<div id="auth" class="flex flex-col items-center justify-center min-h-screen bg-base-200">
+  <div class="card w-96 bg-base-100 shadow-xl">
+    <div class="card-body">
+      <h2 class="card-title justify-center">Accedi o Registrati</h2>
+      <form id="loginForm" class="space-y-4">
+        <input type="email" id="email" placeholder="Email" class="input input-bordered w-full" required>
+        <input type="password" id="password" placeholder="Password" class="input input-bordered w-full" required>
+        <div class="flex justify-between">
+          <button type="submit" class="btn btn-primary">Accedi</button>
+          <button type="button" id="registerBtn" class="btn btn-secondary">Registrati</button>
+        </div>
+      </form>
+      <div id="authError" class="text-error mt-2"></div>
+    </div>
+  </div>
+</div>
+*/
+
+// Ricorda di importare Tailwind CSS e DaisyUI in style.css:
+// @import 'tailwindcss/base';
+// @import 'tailwindcss/components';
+// @import 'tailwindcss/utilities';
+// @import 'daisyui';
