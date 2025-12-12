@@ -37,8 +37,15 @@ h1 {
   margin-bottom: 2rem;
 }
 
+@font-face {
+  font-family: 'OlympicSans';
+  src: url('/public/fonts/OlimpicSans.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 #auth h1 {
-  font-family: 'Olympic', 'Montserrat', 'Inter', sans-serif;
+  font-family: 'OlympicSans', 'Montserrat', 'Inter', sans-serif;
   font-size: 4rem;
   font-weight: 900;
   color: #1d3557;
@@ -76,11 +83,4 @@ h1 {
 
 #authError {
   min-height: 1.5em;
-}
-
-@font-face {
-  font-family: 'Olympic';
-  src: url('/public/fonts/Olympic.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
 }
